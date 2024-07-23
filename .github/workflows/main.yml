@@ -1,0 +1,49 @@
+name: Build and Pack
+
+on:
+  push:
+    branches:
+      - 14-2021
+  pull_request:
+    branches:
+      - 14-2021
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Checkout build scripts
+      uses: actions/checkout@v4
+      with:
+        repository: 100Daisy/kernel-build-script
+        ref: borneo
+        path: build
+
+    - name: Set up build environment
+      run: |
+        chmod +x ./build/build.sh
+
+    - name: Run build script
+      run: ./build/build.sh
+
+    - name: Archive build
+      run: |
+        mkdir -p out/borneo-kernel/modules
+        cp out/arch/arm64/boot/dts/vendor/qcom/bengal-moto-base-borneo.dtb out/borneo-kernel/bengal-moto-base-borneo.dtb
+        cp out/arch/arm64/boot/dts/vendor/qcom/bengal-moto-base-cebu.dtb out/borneo-kernel/bengal-moto-base-cebu.dtb
+        cp out/arch/arm64/boot/dtbo.img out/borneo-kernel/dtbo.img
+        cp out/arch/arm64/boot/Image.gz out/borneo-kernel/Image.gz
+        find out -type f -name "*.ko" -exec mv {} out/borneo-kernel/modules/ \;
+        mv out/borneo-kernel/modules/wlan.ko out/borneo-kernel/modules/qca_cld3_wlan.ko
+        tar -czvf borneo-kernel.tar.gz out/borneo-kernel
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Kernel
+        path: borneo-kernel.tar.gz
